@@ -503,7 +503,8 @@ test('a remote behind Cloudflare Access is reached with a service token; without
     })
     return [
       { id: 'behind-access', url: accessUrl, publicKey: key, allowBots: ['ada'], accessClientId: 'id.access', accessClientSecret: 'the-secret' },
-      { id: 'no-token', url: accessUrl, publicKey: key, allowBots: ['ada'] },
+      // As a profile saved by 0.3.1 has it: the plugin still loads, and the error says what is missing.
+      { id: 'no-token', url: accessUrl, publicKey: key, allowBots: ['ada'], accessClientId: 'id.access', accessClientSecretRef: 'WORKER_ACCESS_SECRET' },
     ]
   } })
   assert.deepEqual((await ada.use('remote_workspaces', { instance_id: 'behind-access' })).map(w => w.id), [workspace.id])

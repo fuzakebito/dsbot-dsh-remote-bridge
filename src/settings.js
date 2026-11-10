@@ -19,6 +19,9 @@ export class Settings {
   /** Writes the two lists into the profile's cordis.patch.yml; DSH then reloads the plugin with them. */
   async save({ remotes, accept }) {
     this.check({ remotes, accept })
+    for (const remote of remotes) {
+      if (Boolean(remote.accessClientId) !== Boolean(remote.accessClientSecret)) throw new Error(`The Cloudflare Access token of "${remote.id}" needs both its Client ID and its Client Secret`)
+    }
     const entry = this.ctx.configEditor.entries().find(entry => entry.fiber === this.owner)
     await this.ctx.configEditor.edit(entry, current => ({ ...current, remotes, accept }))
   }

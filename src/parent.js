@@ -55,7 +55,7 @@ export class Parent {
 
   rpc(remote, method, args, signal) {
     // The Cloudflare Access service token that lets requests through to a remote behind Access.
-    const accessToken = remote.accessClientId ? { 'CF-Access-Client-Id': remote.accessClientId, 'CF-Access-Client-Secret': remote.accessClientSecret } : {}
+    const accessToken = remote.accessClientId && remote.accessClientSecret ? { 'CF-Access-Client-Id': remote.accessClientId, 'CF-Access-Client-Secret': remote.accessClientSecret } : {}
     return call(this.keys, remote, method, args, signal, accessToken)
   }
 

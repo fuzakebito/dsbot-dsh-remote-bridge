@@ -39,7 +39,6 @@ export function check({ remotes, accept }) {
   for (const remote of remotes) {
     if (!remote.id) throw new Error('A remote needs a name')
     if (!URL.canParse(remote.url)) throw new Error(`"${remote.url}" is not a URL`)
-    if (Boolean(remote.accessClientId) !== Boolean(remote.accessClientSecret)) throw new Error(`The Cloudflare Access token of "${remote.id}" needs both its Client ID and its Client Secret`)
   }
   const ids = remotes.map(remote => remote.id)
   if (new Set(ids).size < ids.length) throw new Error(`Two remotes share the name "${ids.find((id, i) => ids.indexOf(id) < i)}"`)
