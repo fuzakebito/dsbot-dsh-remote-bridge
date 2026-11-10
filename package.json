@@ -1,0 +1,37 @@
+{
+  "name": "dsbot-dsh-remote-bridge",
+  "version": "0.3.0",
+  "type": "module",
+  "description": "Let DS Bot's Bots delegate work to, and run tools on, another DSH",
+  "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "git+https://github.com/fuzakebito/dsbot-dsh-remote-bridge.git" },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": ["index.js", "client.js", "src/", "locale/", "icon.svg", "cordis.patch.yml", "README.md", "LICENSE", "dsbot/"],
+  "engines": { "dsh": "0.2.1-rc.3" },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-home-paths": "*",
+    "@deepseek-ai/dsh-llm": "*",
+    "@deepseek-ai/schemastery": "*"
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-plugin-manager",
+        "@deepseek-ai/dsh-client-ui-sidebar-right",
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-ui-workspace",
+        "@deepseek-ai/dsh-api-workspace-controller",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  },
+  "scripts": { "test": "node --import ./test/resolve-runtime.mjs --test test/bridge.test.mjs" }
+}

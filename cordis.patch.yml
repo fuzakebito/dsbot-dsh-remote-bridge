@@ -1,0 +1,5 @@
+# Does nothing until a profile's cordis.patch.yml gives this row `remotes` or `accept`.
+- insert:
+    - id: remote-dsh-bridge
+      name: 'dsbot-dsh-remote-bridge'
+      config: {}

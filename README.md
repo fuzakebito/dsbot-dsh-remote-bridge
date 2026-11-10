@@ -1,2 +1,126 @@
-# dsbot-dsh-remote-bridge
-DSH plugin: DS Bot's Bots delegate work to, and run tools on, another DSH
+# Remote DSH Bridge
+
+DS Bot の Bot が、別の DSH に作業を依頼し、その DSH のツールを直接使い、その DSH のセッションを右サイドバーに表示するための DSH プラグインです。
+
+## 導入
+
+つなぎたい両方の DSH で、サイドバーの **プラグイン** → **プラグインを追加** に次のアドレスを入れます。
+
+```
+https://github.com/fuzakebito/dsbot-dsh-remote-bridge
+```
+
+特定の版に固定するときは、末尾に `#<コミットのハッシュ>` を付けます。ビルドや追加の依存はありません。
+
+導入後の設定は、同じ画面の **Remote DSH Bridge** → 行の **設定** で行います（次の節）。
+
+両方の DSH に同じパッケージを入れます。役割は設定で決まります。`remotes` を書いた DSH は依頼する側（親）になり、`accept` を書いた DSH は依頼を受ける側（子）になります。1 つの親に子をいくつでも登録でき、1 つの子が複数の親を受け入れることもできます。
+
+## 設定画面
+
+**プラグイン** → **Remote DSH Bridge** → 行の **設定** を開きます。両方の DSH で同じ画面を使います。
+
+1. 画面の上にある「この DSH の公開鍵」をコピーして、相手に渡します。公開鍵なので、どんな経路で渡してもかまいません。
+2. 依頼する側では「ここの Bot が使える DSH」に相手を追加します。名前、URL、相手の公開鍵を入れ、使ってよい Bot を名前で選びます。
+3. 受ける側では「この DSH を使える DSH」に相手を追加します。相手の公開鍵を入れ、使わせるワークスペースと権限を選びます。
+4. **保存** を押すと、すぐ反映されます。公開鍵の貼り間違いや URL の形式違いは、保存時にその場で知らせます。
+
+共有する秘密はありません。各 DSH は、パッケージを入れた時点で自分の鍵ペア（Ed25519）を DSH ホームの `remote-dsh-bridge/` に作ります（秘密鍵 `key.pem`、公開鍵 `key.pub`）。秘密鍵はその DSH の外に出しません。鍵を替えるときは `key.pem` を消して入れ直し、相手側に登録した公開鍵を入れ替えます。
+
+Bot を名前で選ぶ一覧は DS Bot から取ります。同梱の `dsbot/remote-facade.js` を DS Bot に入れている必要があります（「前提」を参照）。
+
+## 設定ファイルで書く場合
+
+設定画面が保存する先は、プロファイルの `cordis.patch.yml` です。直接書くこともできます。右サイドバーに関わる項目（`webUrl`、`webOrigin`）は、ページを再読み込みすると画面に反映されます。
+
+依頼する側（Bot がいる DSH）:
+
+```yaml
+- id: remote-dsh-bridge
+  config:
+    remotes:
+      - id: worker                          # Bot がこの名前で指定する
+        url: https://worker.example         # この DSH から見た相手の URL
+        publicKey: <worker の key.pub の 1 行>
+        allowBots: [<Bot の ID>]            # 使ってよい Bot
+        label: Worker                       # 省略可
+        webUrl: https://worker.example/     # 省略可。書くと右サイドバーに表示できる
+      - id: builder                         # 子は何台でも並べられる
+        url: https://builder.example
+        publicKey: <builder の key.pub の 1 行>
+        allowBots: [<Bot の ID>]
+```
+
+依頼を受ける側:
+
+```yaml
+- id: remote-dsh-bridge
+  config:
+    accept:
+      - publicKey: <親の key.pub の 1 行>
+        workspaces: [<ワークスペースの ID>]      # 相手に使わせるワークスペース
+        permissionPreset: <権限プリセット名>     # 省略可。相手が作るセッションの権限
+        webOrigin: https://parent.example      # 省略可。この DSH を埋め込んでよい親の画面
+```
+
+鍵と、親が覚えている子の一覧（`children.json`）の置き場所を変えるときは `dataDir` を書きます。子の側が持つのは鍵だけです。
+
+## 別のコンピューターとつなぐ
+
+通信は、親から子への HTTPS リクエストだけです。子から親へは接続しないので、親は外から届く必要がありません。
+
+- 子の `url` に、親のコンピューターから届くこと。同じコンピューターの外へ出るなら `https` にします。署名は相手が誰かを確かめるもので、内容は暗号化しません。
+- 子の前にログインを求める仕組み（Cloudflare Access など）がある場合は、`/remote-dsh-bridge/rpc` の 1 経路だけ素通しにします。この経路は、受け入れた公開鍵の署名がないリクエストを拒否します。
+- 両方のコンピューターの時計のずれが 5 分以内であること。
+- 右サイドバーに表示するなら、利用者のブラウザから子の `webUrl` が開けること。
+
+## Bot が使えるツール
+
+| ツール | すること |
+|---|---|
+| `remote_instances` | 使える遠隔 DSH の一覧 |
+| `remote_workspaces` / `remote_presets` / `remote_sessions` | 遠隔 DSH のワークスペース、プリセット、セッションの一覧 |
+| `remote_subagent` | 遠隔のエージェントに作業を依頼してすぐ戻る。`session_id` を渡すと既存のセッションを続ける |
+| `remote_subagent_fork` | 同上。新しいセッションに、今の会話の文章も渡す |
+| `remote_send_message` | 子に追加の指示を送る。作業中なら方向修正、止まっていれば新しい作業になる |
+| `remote_list_agents` | 自分の子と、動いているかどうか |
+| `remote_wait_subagent` | 子が止まるか、進捗を知らせてくるまで待つ |
+| `remote_tools` / `remote_call_tool` | 遠隔 DSH のツールを、エージェントを介さず直接実行する |
+
+どの遠隔 DSH を使うかは `instance_id` で選びます。子の進捗（子が `report_to_parent` で送ったもの）と最終回答は、依頼した会話にメッセージとして届きます。
+
+## しくみ
+
+- 子は、受ける側の DSH の普通のセッションです。その DSH の画面でセッションを作るのと同じ手順で作るので、プリセット、既定のモデル、履歴はその DSH のものがそのまま使われ、その DSH の画面にも並びます。
+- 親は 2 秒ごと（`pollSeconds`）に、動いている子のセッションログの続きを読み、進捗と回答を Bot の会話へ届けます。どこまで届けたかを子ごとに保存するので、親を再起動しても続きから届きます。
+- 読みに行くのは遠隔 DSH ごとに独立です。応答しない遠隔 DSH があっても、ほかの遠隔 DSH の子の回答は遅れません。
+- `remote_call_tool` は、親・会話・ワークスペースの組ごとに 1 つの専用セッションでツールを実行します。モデルは動きません。バックグラウンドジョブなどは同じ会話の次の呼び出しでも使えます。
+- リクエストは、宛先の DSH と時刻を含めて親の秘密鍵で署名します。別の DSH への転送、再送、5 分以上遅れた到着は拒否されます。応答は子の秘密鍵で署名され、親は設定した公開鍵で確かめます。
+
+## 前提
+
+- 両方とも DSH 0.2.1-rc.3。
+- 依頼する側では、DS Bot が `remoteBridgeIdentity` サービスを提供していること。セッションがどの Bot のどの会話かを答え、その会話にメッセージを届け、Bot の一覧を返す役です。DS Bot はこれらを外部に公開していないので、同梱の `dsbot/remote-facade.js` を DS Bot のパッケージ直下に置き、DS Bot の `apply` から `installRemoteFacade(ctx, rt)` を呼びます。いま DS Bot に入っているものとの違いは、Bot の一覧を返す `bots()` を足した点だけです。
+- 右サイドバーに表示するには、受ける側の DSH が親の画面からの埋め込みを許可し、利用者がそのブラウザで受ける側にログインしていること。
+
+## 制限
+
+- `remote_call_tool` で実行するツールは、人の承認が必要になると失敗します。承認を挟む作業は `remote_subagent` に依頼してください。
+- 画像やファイルを返すツールの結果は、文章の部分だけが届きます。
+- 1 回のリクエストは 32 MB までです。
+- 親が届けた直後、保存する前に落ちると、再起動後に同じメッセージがもう一度届きます。
+- 子が止まったあとにバックグラウンドジョブの完了などで自分から動き出した分は、親には届きません。
+
+## テスト
+
+```sh
+DSH_RUNTIME=<DSH 本体の node_modules があるディレクトリ> npm test
+```
+
+導入済みの DSH パッケージで本物の Host を組み立て、本物の HTTP で両端をつないで試します。差し替えているのは、モデル（決まった返事をする）と DS Bot（`remoteBridgeIdentity` だけの代役）です。
+
+ブラウザ側（`client.js`）は、設定画面が正しい行に登録されることだけを確かめています。画面の表示と操作、設定のファイルへの書き込み（DSH の `configEditor`）は、このテストの対象外です。
+
+## ライセンス
+
+Apache-2.0。`dsbot/remote-facade.js` は [DS Bot](https://github.com/Fei2411/DS-Bot)（Apache-2.0）に組み込むためのファイルです。
