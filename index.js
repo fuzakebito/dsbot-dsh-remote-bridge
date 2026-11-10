@@ -2,6 +2,7 @@
 // the remote_* tools. `accept` makes it a receiver: it serves those tools' requests.
 import { join } from 'node:path'
 import z from '@deepseek-ai/schemastery'
+import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { Parent, registerTools } from './src/parent.js'
 import { Receiver } from './src/receiver.js'
@@ -20,6 +21,8 @@ export const Config = z.object({
     allowBots: z.array(z.string()).required().description('Stable IDs of the Bots that may use this remote.'),
     label: z.string(),
     webUrl: z.string().description('Browser URL of the remote DSH, shown in the right sidebar.'),
+    accessClientId: z.string().description('Client ID of a Cloudflare Access service token, when the remote DSH is behind Access.'),
+    accessClientSecretRef: z.string().role('credential-ref').description("Name of the credential that holds that token's Client Secret."),
   })).default([]),
   accept: z.array(z.object({
     publicKey: publicKey('the calling DSH'),
@@ -37,6 +40,7 @@ export function check({ remotes, accept }) {
   for (const remote of remotes) {
     if (!remote.id) throw new Error('A remote needs a name')
     if (!URL.canParse(remote.url)) throw new Error(`"${remote.url}" is not a URL`)
+    if (Boolean(remote.accessClientId) !== Boolean(remote.accessClientSecretRef)) throw new Error(`The Cloudflare Access token of "${remote.id}" needs both its Client ID and the credential holding its Client Secret`)
   }
   const ids = remotes.map(remote => remote.id)
   if (new Set(ids).size < ids.length) throw new Error(`Two remotes share the name "${ids.find((id, i) => ids.indexOf(id) < i)}"`)
@@ -50,11 +54,12 @@ export async function apply(ctx, config) {
 
   if (config.remotes.length) {
     // remoteBridgeIdentity is DS Bot's: it names the Bot behind a session and delivers to its conversation.
-    ctx.inject(['remoteBridgeIdentity', 'tools', 'sessionQuery', 'connection'], async c => {
+    ctx.inject(['remoteBridgeIdentity', 'credentials', 'tools', 'sessionQuery', 'connection'], async c => {
       const parent = new Parent({
         remotes: config.remotes,
         keys,
         identity: c.remoteBridgeIdentity,
+        secret: async name => (await c.credentials.resolve(credentialRef(name)))?.value,
         readSession: id => c.sessionQuery.readSession(id),
         stateFile: join(dataDir, 'children.json'),
         warn: message => c.logger.warn(message),

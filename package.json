@@ -1,6 +1,6 @@
 {
   "name": "dsbot-dsh-remote-bridge",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Let DS Bot's Bots delegate work to, and run tools on, another DSH",
   "license": "Apache-2.0",
@@ -14,6 +14,7 @@
   "files": ["index.js", "client.js", "src/", "locale/", "icon.svg", "cordis.patch.yml", "README.md", "LICENSE", "dsbot/"],
   "engines": { "dsh": "0.2.1-rc.3" },
   "peerDependencies": {
+    "@deepseek-ai/dsh-credentials": "*",
     "@deepseek-ai/dsh-home-paths": "*",
     "@deepseek-ai/dsh-llm": "*",
     "@deepseek-ai/schemastery": "*"

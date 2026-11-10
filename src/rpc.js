@@ -41,17 +41,23 @@ const bytes = parts => Buffer.from(JSON.stringify(parts))
 const signatureOf = (keys, ...parts) => sign(null, bytes(parts), keys.privateKey).toString('base64')
 const isSignedBy = (publicKey, signature, ...parts) => verify(null, bytes(parts), keyOf(publicKey), Buffer.from(signature ?? '', 'base64'))
 
-export async function call(keys, remote, method, args, signal) {
+/** `gateHeaders` are for whatever stands in front of the remote DSH, such as Cloudflare Access; the bridge itself ignores them. */
+export async function call(keys, remote, method, args, signal, gateHeaders = {}) {
   // The id makes every request distinct, so an honest repeat is not taken for a replay.
   const body = JSON.stringify({ id: randomUUID(), method, args })
   const time = String(Date.now())
   const signature = signatureOf(keys, 'request', remote.publicKey, time, body)
   const response = await fetch(remote.url.replace(/\/$/, '') + ROUTE, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-bridge-from': keys.publicKey, 'x-bridge-time': time, 'x-bridge-signature': signature },
+    headers: { ...gateHeaders, 'content-type': 'application/json', 'x-bridge-from': keys.publicKey, 'x-bridge-time': time, 'x-bridge-signature': signature },
     body,
     signal,
+    redirect: 'manual',   // the bridge never redirects; a login page in front of it does
   })
+  if (response.status >= 300 && response.status < 400) {
+    const to = new URL(response.headers.get('location'), remote.url).host
+    throw new Error(`Requests to ${remote.url} are redirected to ${to}: something in front of the remote DSH asks for a login. If it is Cloudflare Access, give this remote a service token`)
+  }
   const answer = await response.text()
   if (response.status === 401) throw new Error(`The remote DSH refused the request: ${answer.slice(0, 200)}`)
   // Anything unsigned is not from the remote bridge: another server at that URL, or something in between.

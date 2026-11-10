@@ -18,8 +18,8 @@ export class Parent {
   troubles = new Map()          // remote id → the problem last warned about
   stop = new AbortController()
 
-  constructor({ remotes, keys, identity, readSession, stateFile, warn }) {
-    Object.assign(this, { remotes, keys, identity, readSession, stateFile, warn })
+  constructor({ remotes, keys, identity, secret, readSession, stateFile, warn }) {
+    Object.assign(this, { remotes, keys, identity, secret, readSession, stateFile, warn })
   }
 
   async load() {
@@ -53,8 +53,16 @@ export class Parent {
     return child
   }
 
-  rpc(remote, method, args, signal) {
-    return call(this.keys, remote, method, args, signal)
+  async rpc(remote, method, args, signal) {
+    return call(this.keys, remote, method, args, signal, await this.accessToken(remote))
+  }
+
+  /** The Cloudflare Access service token that lets requests through to a remote behind Access. */
+  async accessToken(remote) {
+    if (!remote.accessClientId) return {}
+    const secret = await this.secret(remote.accessClientSecretRef)
+    if (!secret) throw new Error(`The credential ${remote.accessClientSecretRef} is not set`)
+    return { 'CF-Access-Client-Id': remote.accessClientId, 'CF-Access-Client-Secret': secret }
   }
 
   // ---- what the remote_* tools do

@@ -69,9 +69,20 @@ https://github.com/fuzakebito/dsbot-dsh-remote-bridge
 通信は、親から子への HTTPS リクエストだけです。子から親へは接続しないので、親は外から届く必要がありません。
 
 - 子の `url` に、親のコンピューターから届くこと。同じコンピューターの外へ出るなら `https` にします。署名は相手が誰かを確かめるもので、内容は暗号化しません。
-- 子の前にログインを求める仕組み（Cloudflare Access など）がある場合は、`/remote-dsh-bridge/rpc` の 1 経路だけ素通しにします。この経路は、受け入れた公開鍵の署名がないリクエストを拒否します。
+- 子の前に Cloudflare Access がある場合は、サービストークンで通します（次の節）。
 - 両方のコンピューターの時計のずれが 5 分以内であること。
 - 右サイドバーに表示するなら、利用者のブラウザから子の `webUrl` が開けること。
+
+## Cloudflare Access の内側にある子につなぐ
+
+Access のサービストークンを使うと、トークンを持たないリクエストは Cloudflare が子に届く前に落とし、届いたものをこのプラグインが公開鍵で検査します。
+
+1. Cloudflare Zero Trust の **Access** → **Service Auth** → **Service Tokens** でトークンを作ります。Client ID と Client Secret が表示されます。Secret はこのときしか見られません。
+2. 子のドメインの Access アプリケーションに、Action が **Service Auth**、対象がそのサービストークンのポリシーを足します。
+3. 親の DSH で、**設定** → **プラグイン設定** → **環境変数 / 秘密管理** に Client Secret を登録します。名前は自由です（例: `WORKER_ACCESS_SECRET`）。
+4. 親のこのプラグインの設定画面で、その子の「Cloudflare Access: Client ID」に Client ID を、「Client Secret を入れた資格情報の名前」に手順 3 の名前を入れて保存します。
+
+設定ファイルでは、`remotes` の項目に `accessClientId` と `accessClientSecretRef` を書きます。子の側の設定は変わりません。
 
 ## Bot が使えるツール
 

@@ -11,6 +11,7 @@ import { text } from 'node:stream/consumers'
 import test from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
 import { Service } from '@deepseek-ai/cordis'
+import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as bridge from '../index.js'
 import { Parent } from '../src/parent.js'
@@ -65,7 +66,7 @@ async function boot(t, { reply = answers, modelDelayMs, permissionPreset, moreRe
     remotes: [
       { id: 'worker', url: origin, publicKey: own.publicKey, allowBots: ['ada', 'bo'], label: 'Worker', webUrl: 'https://worker.example/' },
       { id: 'impostor', url: origin, publicKey: another.publicKey, allowBots: ['ada'] },   // the DSH at this URL is not the one whose key we hold
-      ...await moreRemotes?.(own.publicKey) ?? [],
+      ...await moreRemotes?.(own.publicKey, origin) ?? [],
     ],
     accept: [{ publicKey: own.publicKey, workspaces: [workspace.id], permissionPreset, webOrigin: 'https://parent.example' }],
     dataDir,
@@ -465,6 +466,7 @@ test('the settings form is given names to choose from, and saves only what would
   await assert.rejects(settings.save({ remotes: [{ ...remote, url: 'new.example' }], accept: [] }), /"new.example" is not a URL/)
   await assert.rejects(settings.save({ remotes: [remote, remote], accept: [] }), /Two remotes share the name "new"/)
   await assert.rejects(settings.save({ remotes: [{ ...remote, id: '' }], accept: [] }), /A remote needs a name/)
+  await assert.rejects(settings.save({ remotes: [{ ...remote, accessClientId: 'id.access' }], accept: [] }), /needs both its Client ID and the credential/)
   assert.equal(saved, undefined)
 })
 
@@ -489,4 +491,24 @@ test('the browser half registers its settings form under the row the package dec
   const form = registered.find(entry => entry.name === 'plugins.row.config')
   assert.equal(form.key, `${manifest.name}#${rowId}`)
   assert.equal(form.component({ view: 'summary', t: key => key }), 'summary')
+})
+
+test('a remote behind Cloudflare Access is reached with a service token; without one the error names the login page', async t => {
+  const { ada, root, workspace } = await boot(t, { moreRemotes: async (key, origin) => {
+    // Access as the bridge meets it: the right token passes to the DSH behind it, anything else is sent to a login page.
+    const accessUrl = await listen(t, async (request, response) => {
+      if (request.headers['cf-access-client-id'] !== 'id.access' || request.headers['cf-access-client-secret'] !== 'the-secret') return response.writeHead(302, { location: 'https://team.cloudflareaccess.example/login?to=here' }).end()
+      const headers = Object.fromEntries(['x-bridge-from', 'x-bridge-time', 'x-bridge-signature', 'content-type'].map(name => [name, request.headers[name]]))
+      const answer = await fetch(origin + ROUTE, { method: 'POST', headers, body: await text(request) })
+      response.writeHead(answer.status, { 'x-bridge-signature': answer.headers.get('x-bridge-signature') ?? '' }).end(await answer.text())
+    })
+    return [
+      { id: 'behind-access', url: accessUrl, publicKey: key, allowBots: ['ada'], accessClientId: 'id.access', accessClientSecretRef: 'WORKER_ACCESS_SECRET' },
+      { id: 'no-token', url: accessUrl, publicKey: key, allowBots: ['ada'] },
+    ]
+  } })
+  await ada.fails('remote_workspaces', { instance_id: 'behind-access' }, /The credential WORKER_ACCESS_SECRET is not set/)
+  await root.credentials.set(credentialRef('WORKER_ACCESS_SECRET'), 'the-secret')
+  assert.deepEqual((await ada.use('remote_workspaces', { instance_id: 'behind-access' })).map(w => w.id), [workspace.id])
+  await ada.fails('remote_workspaces', { instance_id: 'no-token' }, /are redirected to team\.cloudflareaccess\.example: something in front of the remote DSH asks for a login/)
 })
