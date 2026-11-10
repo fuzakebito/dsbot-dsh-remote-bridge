@@ -10,8 +10,7 @@ export class Settings {
       publicKey: this.publicKey,
       remotes: this.config.remotes,
       accept: this.config.accept,
-      // Names to choose from instead of IDs. Bots come from DS Bot; null where it cannot list them.
-      bots: this.ctx.get('remoteBridgeIdentity')?.bots?.() ?? null,
+      // Names to choose from instead of IDs. The form asks DS Bot itself for the Bots.
       workspaces: this.ctx.workspaceRegistry.list().map(({ id, title, path }) => ({ id, title, path })),
       permissionPresets: this.ctx.permissionPresets.names,
     }

@@ -10,10 +10,6 @@ export function attachRemoteFacade(rt, { createUserMessage } = {}) {
     return room.sessions[botId];
   }
   return {
-    /** Every Bot, for a settings form that lets a person choose Bots by name. */
-    bots() {
-      return Object.values(rt.state.bots).map(({ id, name }) => ({ id, name }));
-    },
     resolveOrigin(agent) {
       const sessionId = agent?.session?.header?.id ?? agent?.id;
       if (!rt.isBotSession(sessionId)) throw new Error('Not a current Bot session');
@@ -48,7 +44,6 @@ export async function installRemoteFacade(ctx, rt) {
   class RemoteBridgeIdentity extends Service {
     constructor(context) {
       super(context, 'remoteBridgeIdentity');
-      this.bots = facade.bots;
       this.resolveOrigin = facade.resolveOrigin;
       this.deliver = facade.deliver;
     }

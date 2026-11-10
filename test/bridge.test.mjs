@@ -58,7 +58,6 @@ async function boot(t, { reply = answers, modelDelayMs, permissionPreset, moreRe
       return who
     }
     async deliver(to, notification) { delivered.push({ to, ...notification }) }
-    bots() { return [{ id: 'ada', name: 'Ada' }, { id: 'bo', name: 'Bo' }] }
   }
   root.plugin(Identity)
 
@@ -452,7 +451,6 @@ test('the settings form is given names to choose from, and saves only what would
 
   const shown = settings.read()
   assert.equal(shown.publicKey, 'this-dsh-key')
-  assert.deepEqual(shown.bots, [{ id: 'ada', name: 'Ada' }, { id: 'bo', name: 'Bo' }])
   assert.deepEqual(shown.workspaces, [{ id: workspace.id, title: 'Work', path: workspace.path }])
   assert.deepEqual(shown.permissionPresets, ['workspace-write', 'danger-full-access'])
   assert.deepEqual([shown.remotes, shown.accept], [config.remotes, config.accept])
@@ -468,11 +466,6 @@ test('the settings form is given names to choose from, and saves only what would
   await assert.rejects(settings.save({ remotes: [remote, remote], accept: [] }), /Two remotes share the name "new"/)
   await assert.rejects(settings.save({ remotes: [{ ...remote, id: '' }], accept: [] }), /A remote needs a name/)
   assert.equal(saved, undefined)
-
-  // On a DSH without DS Bot there are no Bots to list, and the form says so instead of failing.
-  const bare = await bootHost()
-  t.after(() => bare.dispose())
-  assert.equal(new Settings(bare.root, { config: { remotes: [], accept: [] } }).read().bots, null)
 })
 
 test('the browser half registers its settings form under the row the package declares', async t => {

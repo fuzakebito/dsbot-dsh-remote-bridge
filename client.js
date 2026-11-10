@@ -18,7 +18,7 @@ window.__ModuleLoader__.load({
         loadFailed: 'The settings could not be loaded. Reload the page.',
         ownKey: 'Public key of this DSH', ownKeyHelp: 'Give this to the other DSH. It is not a secret.', copy: 'Copy', copied: 'Copied',
         remotes: 'DSH that the Bots here may use', remotesHelp: 'Each one must list this DSH\'s public key under "DSH that may use this one".',
-        needsDsBot: 'Listing Bots needs DS Bot with its remote bridge support. Without it, this DSH cannot use others.',
+        needsDsBot: 'This DSH has no DS Bot, so it has no Bots that could use another DSH. It can still be used by others, below.',
         addRemote: 'Add a DSH', name: 'Name', nameHelp: 'Bots choose the DSH by this name.',
         url: 'URL', urlHelp: 'As this computer reaches it. Use https beyond this computer.',
         theirKey: 'Its public key', bots: 'Bots that may use it', label: 'Display name (optional)',
@@ -34,7 +34,7 @@ window.__ModuleLoader__.load({
         loadFailed: '設定を読み込めませんでした。ページを再読み込みしてください。',
         ownKey: 'この DSH の公開鍵', ownKeyHelp: '相手の DSH に渡してください。秘密ではありません。', copy: 'コピー', copied: 'コピーしました',
         remotes: 'ここの Bot が使える DSH', remotesHelp: '相手側の「この DSH を使える DSH」に、この DSH の公開鍵を登録しておく必要があります。',
-        needsDsBot: 'Bot の一覧には、リモートブリッジに対応した DS Bot が必要です。ない場合、この DSH からほかの DSH は使えません。',
+        needsDsBot: 'この DSH には DS Bot がないので、ほかの DSH を使う Bot がいません。下の欄で、ほかの DSH から使われる側にはなれます。',
         addRemote: 'DSH を追加', name: '名前', nameHelp: 'Bot はこの名前で DSH を選びます。',
         url: 'URL', urlHelp: 'このコンピューターから届くアドレス。別のコンピューターなら https にします。',
         theirKey: '相手の公開鍵', bots: '使ってよい Bot', label: '表示名（省略可）',
@@ -127,8 +127,11 @@ window.__ModuleLoader__.load({
       const [copied, setCopied] = React.useState(false)
 
       React.useEffect(() => {
-        fetch(SETTINGS).then(response => response.json()).then(info => {
-          setInfo(info)
+        // The Bots' names come from DS Bot, the way its own screen reads them; null on a DSH without DS Bot.
+        const bots = fetch('api/bot', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ endpoint: 'state' }) })
+          .then(response => response.json()).then(reply => reply.value.bots.map(({ id, name }) => ({ id, name }))).catch(() => null)
+        Promise.all([fetch(SETTINGS).then(response => response.json()), bots]).then(([info, bots]) => {
+          setInfo({ ...info, bots })
           setDraft({ remotes: info.remotes, accept: info.accept })
         }, () => setStatus('loadFailed'))
       }, [])

@@ -27,7 +27,6 @@ https://github.com/fuzakebito/dsbot-dsh-remote-bridge
 
 共有する秘密はありません。各 DSH は、パッケージを入れた時点で自分の鍵ペア（Ed25519）を DSH ホームの `remote-dsh-bridge/` に作ります（秘密鍵 `key.pem`、公開鍵 `key.pub`）。秘密鍵はその DSH の外に出しません。鍵を替えるときは `key.pem` を消して入れ直し、相手側に登録した公開鍵を入れ替えます。
 
-Bot を名前で選ぶ一覧は DS Bot から取ります。同梱の `dsbot/remote-facade.js` を DS Bot に入れている必要があります（「前提」を参照）。
 
 ## 設定ファイルで書く場合
 
@@ -100,7 +99,7 @@ Bot を名前で選ぶ一覧は DS Bot から取ります。同梱の `dsbot/rem
 ## 前提
 
 - 両方とも DSH 0.2.1-rc.3。
-- 依頼する側では、DS Bot が `remoteBridgeIdentity` サービスを提供していること。セッションがどの Bot のどの会話かを答え、その会話にメッセージを届け、Bot の一覧を返す役です。DS Bot はこれらを外部に公開していないので、同梱の `dsbot/remote-facade.js` を DS Bot のパッケージ直下に置き、DS Bot の `apply` から `installRemoteFacade(ctx, rt)` を呼びます。いま DS Bot に入っているものとの違いは、Bot の一覧を返す `bots()` を足した点だけです。
+- 依頼する側では、DS Bot が `remoteBridgeIdentity` サービスを提供していること。セッションがどの Bot のどの会話かを答え、その会話にメッセージを届ける役です。DS Bot はこれを外部に公開していないので、同梱の `dsbot/remote-facade.js` を DS Bot のパッケージ直下に置き、DS Bot の `apply` から `installRemoteFacade(ctx, rt)` を呼びます。
 - 右サイドバーに表示するには、受ける側の DSH が親の画面からの埋め込みを許可し、利用者がそのブラウザで受ける側にログインしていること。
 
 ## 制限
