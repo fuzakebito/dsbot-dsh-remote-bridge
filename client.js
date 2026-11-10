@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
         theirKey: 'Its public key', bots: 'Bots that may use it', label: 'Display name (optional)',
         webUrl: 'URL of its screen (optional)', webUrlHelp: 'Shows its sessions in the right sidebar.',
         accessId: 'Cloudflare Access: Client ID (optional)', accessIdHelp: 'Of a service token, when the DSH is behind Cloudflare Access.',
-        accessSecret: 'Cloudflare Access: name of the credential holding the Client Secret', accessSecretHelp: 'Store the secret itself under Settings → Plugin configuration → Environment variables / secrets, and write only its name here.',
+        accessSecret: 'Cloudflare Access: Client Secret', accessSecretHelp: 'Kept in this DSH\'s cordis.patch.yml.',
         accept: 'DSH that may use this one', acceptHelp: 'Whoever holds the matching private key can run agents and tools in the chosen workspaces.',
         addPeer: 'Add a DSH', workspaces: 'Workspaces it may use', permission: 'Permissions of the sessions it creates', dshDefault: 'This DSH\'s default',
         webOrigin: 'Address of its screen (optional)', webOriginHelp: 'Lets that screen show this DSH in its right sidebar. Example: https://parent.example',
@@ -42,7 +42,7 @@ window.__ModuleLoader__.load({
         theirKey: '相手の公開鍵', bots: '使ってよい Bot', label: '表示名（省略可）',
         webUrl: '相手の画面の URL（省略可）', webUrlHelp: '相手のセッションを右サイドバーに表示します。',
         accessId: 'Cloudflare Access: Client ID（省略可）', accessIdHelp: '相手が Cloudflare Access の内側にある場合に、サービストークンの Client ID を入れます。',
-        accessSecret: 'Cloudflare Access: Client Secret を入れた資格情報の名前', accessSecretHelp: 'シークレットの値は 設定 → プラグイン設定 → 環境変数 / 秘密管理 に登録し、ここにはその名前だけを書きます。',
+        accessSecret: 'Cloudflare Access: Client Secret', accessSecretHelp: 'この DSH の cordis.patch.yml に保存されます。',
         accept: 'この DSH を使える DSH', acceptHelp: '対応する秘密鍵を持つ相手は、選んだワークスペースでエージェントとツールを動かせます。',
         addPeer: 'DSH を追加', workspaces: '使わせるワークスペース', permission: '相手が作るセッションの権限', dshDefault: 'この DSH の既定',
         webOrigin: '相手の画面のアドレス（省略可）', webOriginHelp: '相手の画面の右サイドバーに、この DSH を表示できるようにします。例: https://parent.example',
@@ -107,7 +107,7 @@ window.__ModuleLoader__.load({
 
     const Field = ({ label, help, children }) => h('label', { style: { display: 'grid', gap: 4 } },
       h('span', null, label), children, help && h('span', { style: dim }, help))
-    const Text = ({ value, onChange, placeholder }) => h('input', { type: 'text', value: value ?? '', placeholder, spellCheck: false, onChange: event => onChange(event.target.value), style: control })
+    const Text = ({ value, onChange, placeholder, type = 'text' }) => h('input', { type, value: value ?? '', placeholder, spellCheck: false, autoComplete: 'off', onChange: event => onChange(event.target.value), style: control })
 
     /** Choose among things by name; the setting itself holds their IDs. */
     function Choices({ label, options, chosen, onChange, missing }) {
@@ -174,7 +174,7 @@ window.__ModuleLoader__.load({
             h(Field, { label: t('label') }, h(Text, { value: remote.label, onChange: label => edit('remotes', i, { label }) })),
             h(Field, { label: t('webUrl'), help: t('webUrlHelp') }, h(Text, { value: remote.webUrl, placeholder: 'https://', onChange: webUrl => edit('remotes', i, { webUrl }) })),
             h(Field, { label: t('accessId'), help: t('accessIdHelp') }, h(Text, { value: remote.accessClientId, onChange: accessClientId => edit('remotes', i, { accessClientId: accessClientId.trim() }) })),
-            h(Field, { label: t('accessSecret'), help: t('accessSecretHelp') }, h(Text, { value: remote.accessClientSecretRef, placeholder: 'WORKER_ACCESS_SECRET', onChange: accessClientSecretRef => edit('remotes', i, { accessClientSecretRef: accessClientSecretRef.trim() }) })),
+            h(Field, { label: t('accessSecret'), help: t('accessSecretHelp') }, h(Text, { type: 'password', value: remote.accessClientSecret, onChange: accessClientSecret => edit('remotes', i, { accessClientSecret: accessClientSecret.trim() }) })),
             removeButton('remotes', i))),
           info.bots && h('button', { type: 'button', style: { ...button, justifySelf: 'start' }, onClick: () => add('remotes', { id: '', url: '', publicKey: '', allowBots: [] }) }, t('addRemote'))),
 

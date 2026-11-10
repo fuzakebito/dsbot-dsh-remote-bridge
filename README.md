@@ -77,12 +77,14 @@ https://github.com/fuzakebito/dsbot-dsh-remote-bridge
 
 Access のサービストークンを使うと、トークンを持たないリクエストは Cloudflare が子に届く前に落とし、届いたものをこのプラグインが公開鍵で検査します。
 
-1. Cloudflare Zero Trust の **Access** → **Service Auth** → **Service Tokens** でトークンを作ります。Client ID と Client Secret が表示されます。Secret はこのときしか見られません。
-2. 子のドメインの Access アプリケーションに、Action が **Service Auth**、対象がそのサービストークンのポリシーを足します。
-3. 親の DSH で、**設定** → **プラグイン設定** → **環境変数 / 秘密管理** に Client Secret を登録します。名前は自由です（例: `WORKER_ACCESS_SECRET`）。
-4. 親のこのプラグインの設定画面で、その子の「Cloudflare Access: Client ID」に Client ID を、「Client Secret を入れた資格情報の名前」に手順 3 の名前を入れて保存します。
+1. Cloudflare Zero Trust でサービストークンを発行し、Client ID と Client Secret を控えます。Secret は発行時にしか表示されません。
+2. ブリッジ専用の Access アプリケーションを作ります。種類は Self-hosted、ドメインは子のドメイン、パスは `remote-dsh-bridge/rpc` です。
+3. そのアプリケーションに、Action が **Service Auth**、対象が手順 1 のトークンのポリシーを 1 つ付けます。子のドメイン全体のアプリケーションは変更しません。
+4. 親のこのプラグインの設定画面で、その子の「Cloudflare Access: Client ID」と「Cloudflare Access: Client Secret」に入れて保存します。
 
-設定ファイルでは、`remotes` の項目に `accessClientId` と `accessClientSecretRef` を書きます。子の側の設定は変わりません。
+これでトークンが通るのは `/remote-dsh-bridge/rpc` だけになり、ほかのパスは従来どおり人のログインが必要です。
+
+Client Secret は親のプロファイルの `cordis.patch.yml` に保存されます（`remotes` の `accessClientId` と `accessClientSecret`）。このファイルを人に見せるときは、その値を伏せてください。子の側の設定は変わりません。
 
 ## Bot が使えるツール
 
